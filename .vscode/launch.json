@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Django",
+            "type": "python",
+            "request": "launch",
+            "program": "/Users/yulinzhu/Desktop/django-4.0b1/django/bin/django-admin.py",
+            "cwd": "/Users/yulinzhu/Desktop/django-debug",
+            "env": {"PYTHONPATH": "/Users/yulinzhu/Desktop/django-4.0b1/"},
+            "args": [
+                "startproject",
+                "first_django"
+            ],
+        }
+    ]
+}
+// 在vs code中配置好这个脚本以后，在执行run命令的时候，相当于输入下面两条命令中的任意一条
+// cd 目录， python django-admin.py startproject first_django 
+// cd 目录， django-admin startproject first_django
