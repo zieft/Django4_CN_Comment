@@ -9,6 +9,8 @@ class cached_property:
     Decorator that converts a method with a single self argument into a
     property cached on the instance.
 
+    将一个只需要self参数的方法转换成属性的形式
+
     A cached property can be made out of an existing method:
     (e.g. ``url = cached_property(get_absolute_url)``).
     The optional ``name`` argument is obsolete as of Python 3.6 and will be

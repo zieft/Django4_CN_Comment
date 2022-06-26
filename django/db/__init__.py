@@ -20,6 +20,7 @@ router = ConnectionRouter()
 
 # For backwards compatibility. Prefer connections['default'] instead.
 connection = ConnectionProxy(connections, DEFAULT_DB_ALIAS)
+# DEFAULT_DB_ALIAS的值就是'default'
 
 
 # Register an event to reset saved queries when a Django request is started.

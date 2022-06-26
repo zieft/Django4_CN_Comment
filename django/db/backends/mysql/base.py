@@ -192,6 +192,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     validation_class = DatabaseValidation
 
     def get_connection_params(self):
+        # 获取连接参数，用户在settings里丁应该的DATABASE参数将会在这里进行分解并保存在kwargs字典里
         kwargs = {
             'conv': django_conversions,
             'charset': 'utf8',
@@ -230,7 +231,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     @async_unsafe
     def get_new_connection(self, conn_params):
+        # 参数conn_params就是上一个函数返回的kwargs
         connection = Database.connect(**conn_params)
+        # 从import的信息可以看出，上一行里的Database就是MySQLdb，也就是Mysqlclient
+        # 从此之后，Django的connection和mysqlclient的connection就是一回事了
+
         # bytes encoder in mysqlclient doesn't work and was added only to
         # prevent KeyErrors in Django < 2.0. We can remove this workaround when
         # mysqlclient 2.1 becomes the minimal mysqlclient supported by Django.

@@ -70,15 +70,15 @@ class DatabaseErrorWrapper:
         if exc_type is None:
             return
         for dj_exc_type in (
-                DataError,
-                OperationalError,
-                IntegrityError,
-                InternalError,
-                ProgrammingError,
-                NotSupportedError,
-                DatabaseError,
-                InterfaceError,
-                Error,
+            DataError,
+            OperationalError,
+            IntegrityError,
+            InternalError,
+            ProgrammingError,
+            NotSupportedError,
+            DatabaseError,
+            InterfaceError,
+            Error,
         ):
             db_exc_type = getattr(self.wrapper.Database, dj_exc_type.__name__)
             if issubclass(exc_type, db_exc_type):
@@ -95,6 +95,7 @@ class DatabaseErrorWrapper:
         def inner(*args, **kwargs):
             with self:
                 return func(*args, **kwargs)
+
         return inner
 
 
@@ -108,7 +109,8 @@ def load_backend(backend_name):
         backend_name = 'django.db.backends.postgresql'
 
     try:
-        return import_module('%s.base' % backend_name)
+        return import_module('%s.base' % backend_name)  # 以mysql为例
+        # 这里将会导入django/db/backends/mysql/base.py
     except ImportError as e_user:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
@@ -154,6 +156,7 @@ class ConnectionHandler(BaseConnectionHandler):
 
     @property
     def databases(self):
+        # 这里返回的settings已经是ensure过default了的
         return self.settings
 
     def ensure_defaults(self, alias):
@@ -198,10 +201,13 @@ class ConnectionHandler(BaseConnectionHandler):
             test_settings.setdefault(key, value)
 
     def create_connection(self, alias):
-        self.ensure_defaults(alias)
-        self.prepare_test_settings(alias)
+        self.ensure_defaults(alias)  # 如果用户没指定alias，就确保default可用
+        self.prepare_test_settings(alias)  # 做一些前端的测试，暂时不管
         db = self.databases[alias]
         backend = load_backend(db['ENGINE'])
+        # 从settings里读出"ENGINE"的值'django.db.backends.mysql'
+        # load_backend()可以把这个字符串参数作为模块导入
+        # backend里存的是django/db/backends/mysql/base.py模块
         return backend.DatabaseWrapper(db, alias)
 
     def close_all(self):
@@ -250,6 +256,7 @@ class ConnectionRouter:
             if instance is not None and instance._state.db:
                 return instance._state.db
             return DEFAULT_DB_ALIAS
+
         return _route_db
 
     db_for_read = _router_func('db_for_read')

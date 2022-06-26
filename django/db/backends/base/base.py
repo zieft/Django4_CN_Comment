@@ -57,6 +57,10 @@ class BaseDatabaseWrapper:
     queries_limit = 9000
 
     def __init__(self, settings_dict, alias=DEFAULT_DB_ALIAS):
+        """
+        settings_dict: 数据库连接信息
+
+        """
         # Connection related attributes.
         # The underlying database connection.
         self.connection = None
@@ -236,14 +240,14 @@ class BaseDatabaseWrapper:
         Validate the connection is usable and perform database cursor wrapping.
         """
         self.validate_thread_sharing()
-        if self.queries_logged:
+        if self.queries_logged:  # DEBUG==True
             wrapped_cursor = self.make_debug_cursor(cursor)
         else:
             wrapped_cursor = self.make_cursor(cursor)
         return wrapped_cursor
 
     def _cursor(self, name=None):
-        self.ensure_connection()
+        self.ensure_connection()  # 确保连接已建立
         with self.wrap_database_errors:
             return self._prepare_cursor(self.create_cursor(name))
 
