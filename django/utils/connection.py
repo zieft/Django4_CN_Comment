@@ -16,11 +16,17 @@ class ConnectionProxy:
         connection.cursor()  等价于  connections["default"].cursor()
     """
 
+    # 在django/core/cache/__init__.py和django/db/__init__.py中被调用
+    # 传入的alias参数都是'default'
+
     def __init__(self, connections, alias):
+        # 传入的connections是django.db.utils.ConnectionHandler的实例
+        #
         self.__dict__['_connections'] = connections
         self.__dict__['_alias'] = alias
 
     def __getattr__(self, item):
+        # equal to connections[alias].item
         return getattr(self._connections[self._alias], item)
 
     def __setattr__(self, name, value):
@@ -42,6 +48,7 @@ class ConnectionDoesNotExist(Exception):
 
 
 class BaseConnectionHandler:
+    # 被django.utils.connection.BaseConnectionHandler继承
     settings_name = None  # 在被django.db.utils.ConnectionHandler继承后，值变为"DATABASES"
     exception_class = ConnectionDoesNotExist
     thread_critical = False

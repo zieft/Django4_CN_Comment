@@ -198,6 +198,7 @@ class BaseDatabaseWrapper:
 
     @async_unsafe
     def connect(self):
+        # 建立数据库连接
         """Connect to the database. Assume that the connection is closed."""
         # Check for invalid configurations.
         self.check_settings()
@@ -241,7 +242,7 @@ class BaseDatabaseWrapper:
         """
         self.validate_thread_sharing()
         if self.queries_logged:  # DEBUG==True
-            wrapped_cursor = self.make_debug_cursor(cursor)
+            wrapped_cursor = self.make_debug_cursor(cursor)  # 比普通的cursor多了些日志输出
         else:
             wrapped_cursor = self.make_cursor(cursor)
         return wrapped_cursor

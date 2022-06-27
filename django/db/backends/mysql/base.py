@@ -48,7 +48,6 @@ django_conversions = {
 # versions like 5.0.24 and 5.0.24a as the same).
 server_version_re = _lazy_re_compile(r'(\d{1,2})\.(\d{1,2})\.(\d{1,2})')
 
-
 class CursorWrapper:
     """
     A thin wrapper around MySQLdb's normal cursor class that catches particular

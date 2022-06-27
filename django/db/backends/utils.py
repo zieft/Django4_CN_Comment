@@ -13,12 +13,17 @@ logger = logging.getLogger('django.db.backends')
 
 class CursorWrapper:
     def __init__(self, cursor, db):
+        # 这里传入的cursor是django.db.backends.mysql.base.CursorWrapper对象本身
+        # 传入的db是django.db.backends.mysql.base.datawrapper对象本身
         self.cursor = cursor
         self.db = db
 
     WRAP_ERROR_ATTRS = frozenset(['fetchone', 'fetchmany', 'fetchall', 'nextset'])
 
     def __getattr__(self, attr):
+        # 如果我们调用self.fetchone()
+        # 这里就能看到，事实上是在调django.db.backends.mysql.base.CursorWrapper.fetchone()
+        # 本质上还是调mysqlclient的fetchone()
         cursor_attr = getattr(self.cursor, attr)
         if attr in CursorWrapper.WRAP_ERROR_ATTRS:
             return self.db.wrap_database_errors(cursor_attr)
