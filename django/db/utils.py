@@ -134,6 +134,15 @@ def load_backend(backend_name):
 
 
 class ConnectionHandler(BaseConnectionHandler):
+    # 责任链模式
+    """
+    有多个对象可以处理一个请求，具体哪个对象处理，由运行时才能决定
+	在不明确接受者的情况下，只向多个对象中的一个提交请求，然后自动分发给正确的处理者
+	django支持很多不同的数据库，在编写django代码的时候，并不知道用户会选择哪一款数据库
+	只有读取到用户的setting后，才知道该使用哪种数据库接口。
+	所以里使用了一个典型的 责任链模式 来进行设计。
+
+    """
     settings_name = 'DATABASES'
     # Connections needs to still be an actual thread local, as it's truly
     # thread-critical. Database backends should use @async_unsafe to protect
