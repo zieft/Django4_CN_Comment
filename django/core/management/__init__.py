@@ -26,6 +26,7 @@ def find_commands(management_dir):
     names that are available.
     """
     command_dir = os.path.join(management_dir, 'commands')
+    # pkgutil.iter_modules([目录])迭代目录里所有模块并返回一个可以迭代的生成器，not name.startswith("_")可以排除__init__.py文件
     return [name for _, name, is_pkg in pkgutil.iter_modules([command_dir])
             if not is_pkg and not name.startswith('_')]
 
@@ -36,7 +37,11 @@ def load_command_class(app_name, name):
     class instance. Allow all errors raised by the import process
     (ImportError, AttributeError) to propagate.
     """
-    module = import_module('%s.management.commands.%s' % (app_name, name))
+    # 以python manage.py shell命令举例
+    # import_module()里面的字符串就是'django.core.management.commands.shell'，这里相当于导入shell模块
+    module = import_module('%s.management.commands.%s' % (app_name, name)) # 这时候的app_name是'django.core'
+    
+    # 每一个命令模块里面都有一个Command类，这是定义好的接口
     return module.Command()
 
 
@@ -63,14 +68,16 @@ def get_commands():
     The dictionary is cached on the first call and reused on subsequent
     calls.
     """
-    commands = {name: 'django.core' for name in find_commands(__path__[0])}
+    commands = {name: 'django.core' for name in find_commands(__path__[0])} # __path__[0]就是当前文件所在的目录的路径
 
     if not settings.configured:
         return commands
 
     for app_config in reversed(list(apps.get_app_configs())):
         path = os.path.join(app_config.path, 'management')
-        commands.update({name: app_config.name for name in find_commands(path)})
+        commands.update({name: app_config.name for name in find_commands(path)}) #找到当前文件所在的目录里的所有模块
+        # 也就是management/commands文件夹里的所有除了__init__.py以外所有的命令文件。
+        # 这样的好处就是，以后向文件夹里添加新的命令的时候，也能被django自动识别并找到，包括用户用help命令打印所有帮助文件的时候也可以找到。
 
     return commands
 
@@ -190,6 +197,8 @@ def call_command(command_name, *args, **options):
 class ManagementUtility:
     """
     Encapsulate the logic of the django-admin and manage.py utilities.
+    如果从django—admin进入这里，则argv初始化时为空
+    儿python manage.py 在实例化这个类时，会把sys.argv传进来
     """
     def __init__(self, argv=None):
         self.argv = argv or sys.argv[:]
@@ -240,8 +249,8 @@ class ManagementUtility:
         # Get commands outside of try block to prevent swallowing exceptions
         commands = get_commands()
         try:
-            app_name = commands[subcommand]
-        except KeyError:
+            app_name = commands[subcommand]  # 比如说我们运行 python manage.py shell时，shell 就是 subcommand，这时候app_name就得到'django.core'字符串
+        except KeyError:  # 处理用户输错subcommand的情况
             if os.environ.get('DJANGO_SETTINGS_MODULE'):
                 # If `subcommand` is missing due to misconfigured settings, the
                 # following line will retrigger an ImproperlyConfigured exception
@@ -256,11 +265,11 @@ class ManagementUtility:
                 sys.stderr.write('. Did you mean %s?' % possible_matches[0])
             sys.stderr.write("\nType '%s help' for usage.\n" % self.prog_name)
             sys.exit(1)
-        if isinstance(app_name, BaseCommand):
+        if isinstance(app_name, BaseCommand):  # 判断app_name是否为BaseCommand的实例，此时不是
             # If the command is already loaded, use it directly.
             klass = app_name
         else:
-            klass = load_command_class(app_name, subcommand)
+            klass = load_command_class(app_name, subcommand) # klass就是每个命令模块中定义的Command类
         return klass
 
     def autocomplete(self):
@@ -342,8 +351,9 @@ class ManagementUtility:
         Given the command-line arguments, figure out which subcommand is being
         run, create a parser appropriate to that command, and run it.
         """
+        # 试一下看看用户有没有给参数，没给直接打印help文档
         try:
-            subcommand = self.argv[1]
+            subcommand = self.argv[1] 
         except IndexError:
             subcommand = 'help'  # Display help if no arguments were given.
 
@@ -376,7 +386,8 @@ class ManagementUtility:
             # Start the auto-reloading dev server even if the code is broken.
             # The hardcoded condition is a code smell but we can't rely on a
             # flag on the command class because we haven't located it yet.
-            if subcommand == 'runserver' and '--noreload' not in self.argv:
+            if subcommand == 'runserver' and '--noreload' not in self.argv: 
+                # subcommand为runserver且后面不跟--noreload时，才运行下列代码
                 try:
                     autoreload.check_errors(django.setup)()
                 except Exception:
@@ -403,11 +414,11 @@ class ManagementUtility:
         self.autocomplete()
 
         if subcommand == 'help':
-            if '--commands' in args:
+            if '--commands' in args: # 如果help后面跟了 --commands，则打印所有可用subcommands
                 sys.stdout.write(self.main_help_text(commands_only=True) + '\n')
-            elif not options.args:
+            elif not options.args: # 如果help后面为空，则打印完整帮助文件
                 sys.stdout.write(self.main_help_text() + '\n')
-            else:
+            else: # help后面跟了某个存在的或不存在的命令，则打印相应命令的帮助文件
                 self.fetch_command(options.args[0]).print_help(self.prog_name, options.args[0])
         # Special-cases: We want 'django-admin --version' and
         # 'django-admin --help' to work, for backwards compatibility.
@@ -416,6 +427,7 @@ class ManagementUtility:
         elif self.argv[1:] in (['--help'], ['-h']):
             sys.stdout.write(self.main_help_text() + '\n')
         else:
+            # self.fetch_command()返回的是每个命令里都会定义的Command()类
             self.fetch_command(subcommand).run_from_argv(self.argv)
 
 
