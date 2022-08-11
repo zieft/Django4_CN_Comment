@@ -92,7 +92,7 @@ class TemplateCommand(BaseCommand):
 
         extensions = tuple(handle_extensions(options['extensions']))  # 处理扩展名
         extra_files = []  # 额外的文件
-        excluded_directories = ['.git', '__pycache__']  # 排除掉git文件和缓存文件
+        excluded_directories = ['.git', '__pycache__']  # 用户可以通过--exclude参数，不从template中渲染某些文件
         for file in options['files']:
             extra_files.extend(map(lambda x: x.strip(), file.split(',')))
         if exclude := options.get('exclude'):
@@ -107,13 +107,15 @@ class TemplateCommand(BaseCommand):
                 'Rendering %s template files with filenames: %s'
                 % (app_or_project, ', '.join(extra_files))
             )
-        # 根据app还是project，给下面的context初始化一些变量命
+
+        # 根据app还是project，给下面的context初始化一些变量名
         base_name = '%s_name' % app_or_project
         base_subdir = '%s_template' % app_or_project
         base_directory = '%s_directory' % app_or_project
         camel_case_name = 'camel_case_%s_name' % app_or_project
         camel_case_value = ''.join(x for x in name.title() if x != '_')
 
+        # context里用于定义渲染时需要转换的字段
         context = Context({
             **options,
             base_name: name,
@@ -136,14 +138,22 @@ class TemplateCommand(BaseCommand):
 
         for root, dirs, files in os.walk(template_dir):
             # 遍历template文件夹下的所有文件
+            """
+            第一次遍历得到：django/conf/project_template， ['project_name'] ，['manage.py-tpl']
+            第二次遍历得到：django/conf/project_template/project_name，
+            [] ['asgi.py-tpl', 'settings.py-tpl', 'urls.py-tpl', 'wsgi.py-tpl', '__init__.py-tpl']
+            """
             path_rest = root[prefix_length:]  # path_rest最终的值为 "/project_name"
-            relative_dir = path_rest.replace(base_name, name)  # 渲染的项目文件夹有两层带有项目名的文件夹
-            if relative_dir:
+            # root[prefix_length:]意思为，在root字符串中，从第prefix_length位开始，取到最后一位
+            # 第一遍循环的时候prefix_length和root的长度相等，故relative_dir为''。
+            # 第二遍循环的时候relative_dir为"/project_name"
+            relative_dir = path_rest.replace(base_name, name)  # 第二次循环的时候把模板中的'project_name'替换成工程的名字
+            if relative_dir: # 第二次遍历的时候relative_dir有值了，这时候在工程文件夹中创建一个同名的文件夹
                 target_dir = os.path.join(top_dir, relative_dir)
                 os.makedirs(target_dir, exist_ok=True)
 
-            for dirname in dirs[:]:
-                if 'exclude' not in options: # 用户可以通过参数排除某些目录不被渲染
+            for dirname in dirs[:]: # 排除掉用户exclude掉的dir和__pycache__
+                if 'exclude' not in options:  # 用户可以通过参数排除某些目录不被渲染
                     if dirname.startswith('.') or dirname == '__pycache__':
                         dirs.remove(dirname)
                 elif dirname in excluded_directories:
@@ -151,13 +161,13 @@ class TemplateCommand(BaseCommand):
 
             for filename in files:
                 # 遍历下列文件
-                # ['manage.py-tpl']
-                # ['__init__.py-tpl', 'urls.py-tpl', 'asgi.py-tpl', 'wsgi.py-tpl', 'settings.py-tpl']
+                # 第一次['manage.py-tpl']
+                # 第二次['__init__.py-tpl', 'urls.py-tpl', 'asgi.py-tpl', 'wsgi.py-tpl', 'settings.py-tpl']
                 if filename.endswith(('.pyo', '.pyc', '.py.class')):
                     # Ignore some files as they cause various breakages.
                     continue
-                old_path = os.path.join(root, filename)     # 模板路径
-                new_path = os.path.join(                    # 新建的工程路径
+                old_path = os.path.join(root, filename)  # 模板路径
+                new_path = os.path.join(  # 新建的工程路径
                     top_dir, relative_dir, filename.replace(base_name, name)
                 )
                 for old_suffix, new_suffix in self.rewrite_template_suffixes:
@@ -184,9 +194,9 @@ class TemplateCommand(BaseCommand):
                     template = Engine().from_string(content)
                     content = template.render(context)
                     with open(new_path, 'w', encoding='utf-8') as new_file:
-                        new_file.write(content)
+                        new_file.write(content) # 将渲染好的文本写入新文件
                 else:
-                    shutil.copyfile(old_path, new_path) # 将一个文件的内容拷贝到另一个文件中，目标文件无需存在
+                    shutil.copyfile(old_path, new_path)  # 将一个文件的内容拷贝到另一个文件中，目标文件无需存在
 
                 if self.verbosity >= 2:
                     self.stdout.write('Creating %s' % new_path)
@@ -215,9 +225,10 @@ class TemplateCommand(BaseCommand):
         Use django.__path__[0] as the default because the Django install
         directory isn't known.
         """
-        if template is None:
-            return os.path.join(django.__path__[0], 'conf', subdir)
-        else:
+        if template is None:  # 判断用户有没有传入template参数，如果没有，就运行下面这行
+            return os.path.join(django.__path__[0], 'conf', subdir)  # 这一行就是生成project或app的template的地址
+            # django.__path__[0]的作用就是取django的安装地址
+        else:  # 下面是用户制定了template的情况，注意看，template可以是本地文件，也可以是个网址
             if template.startswith('file://'):
                 template = template[7:]
             expanded_template = os.path.expanduser(template)
@@ -236,7 +247,7 @@ class TemplateCommand(BaseCommand):
                            (self.app_or_project, template))
 
     def validate_name(self, name, name_or_dir='name'):
-        if name is None:
+        if name is None:  # 不能为空
             raise CommandError('you must provide {an} {app} name'.format(
                 an=self.a_or_an,
                 app=self.app_or_project,
@@ -246,7 +257,7 @@ class TemplateCommand(BaseCommand):
         A string is considered a valid identifier if it only contains alphanumeric letters (a-z) and (0-9),
         or underscores (_). A valid identifier cannot start with a number, or contain any spaces.
         """
-        if not name.isidentifier():
+        if not name.isidentifier():  # 限制字符为(a-z)，(0-9)和下划线(_)
             raise CommandError(
                 "'{name}' is not a valid {app} {type}. Please make sure the "
                 "{type} is a valid identifier.".format(
@@ -256,7 +267,7 @@ class TemplateCommand(BaseCommand):
                 )
             )
         # Check it cannot be imported.
-        try:
+        try:  # 不能与其他模块重名
             import_module(name)
         except ImportError:
             pass
